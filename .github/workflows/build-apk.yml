@@ -1,44 +1,31 @@
 name: Build Android Debug APK
-
 on:
   push:
     branches: [ "main", "master" ]
-
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v4
-
-    - name: Set up JDK 17
-      uses: actions/setup-java@v5
+    - uses: actions/checkout@v4
+    - uses: actions/setup-java@v5
       with:
         distribution: 'temurin'
         java-version: '17'
-
-    - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@v4
-
+    - uses: gradle/actions/setup-gradle@v4
     - name: Generate debug.keystore if missing
       run: |
         if [ ! -f debug.keystore ]; then
-          echo "Generating debug.keystore for CI..."
           keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
         fi
-        mkdir -p app
-        cp debug.keystore app/debug.keystore || true
-        ls -lh debug.keystore app/debug.keystore
-
-    - name: Make gradlew executable
-      run: chmod +x ./gradlew
-
     - name: Build Debug APK
-      run: ./gradlew assembleDebug --stacktrace
-
-    - name: Upload APK Artifact
-      uses: actions/upload-artifact@v4
+      run: |
+        if [ -f ./gradlew ]; then
+          chmod +x ./gradlew
+          ./gradlew assembleDebug
+        else
+          gradle assembleDebug
+        fi
+    - uses: actions/upload-artifact@v4
       with:
         name: app-debug-apk
         path: app/build/outputs/apk/debug/app-debug.apk
